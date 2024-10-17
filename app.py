@@ -12,6 +12,11 @@ app.secret_key = 'your_secret_key'  # Cambia esto por una clave secreta segura
 app.config['SESSION_TYPE'] = 'filesystem'
 Session(app)
 
+from dotenv import load_dotenv
+
+# Cargar las variables desde el archivo .env
+load_dotenv()
+
 def allowSelfSignedHttps(allowed):
     # Omite la verificación del certificado del servidor en el cliente
     if allowed and not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None):
@@ -70,11 +75,8 @@ def promptflow():
 
     body = str.encode(json.dumps(payload))
 
-    # url = 'https://tu-endpoint-de-promptflow.azure.com/score'  # Reemplaza con la URL de tu endpoint
-    # api_key = os.environ.get('PROMPTFLOW_API_KEY')  # Almacena tu clave de API en una variable de entorno
-    url = 'https://mmd-alertas-kpis-adauu.swedencentral.inference.ml.azure.com/score'  # Reemplaza con la URL de tu endpoint
-    api_key = 'wEzQOmlKerUOa0TDYDPStTe8AYK0naqt'  # Reemplaza con tu clave de API
-
+    url = os.getenv('ENDPOINT_ALERTAS')
+    api_key = os.getenv('KEY_ALERTAS')
 
     if not api_key:
         return jsonify({'response': 'API key is missing'}), 500
@@ -122,11 +124,8 @@ def chat():
 
         body = str.encode(json.dumps(payload))
 
-        # url = 'https://tu-endpoint-de-chat.azure.com/score'  # Reemplaza con la URL de tu endpoint
-        # api_key = os.environ.get('CHAT_API_KEY')  # Almacena tu clave de API en una variable de entorno
-        url = 'https://ms-rismecanico-suacd.swedencentral.inference.ml.azure.com/score'
-        api_key = '33j8qya4nU8L4JOT3mPZZ5QA6oytQX1V'
-
+        url = os.getenv('ENDPOINT_RIS')
+        api_key = os.getenv('KEY_RIS')
 
         if not api_key:
             return jsonify({'response': 'API key is missing'}), 500
