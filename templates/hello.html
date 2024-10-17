@@ -1,0 +1,235 @@
+<!doctype html>
+<html>
+<head>
+    <title>Hello Azure - Python Quickstart</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <style>
+      /* Estilos para el chat y el formulario */
+      #chat-box, #promptflow-form {
+          position: fixed;
+          bottom: 0;
+          right: 0;
+          width: 50%;
+          top: calc(100px + 2em);
+          border: 1px solid #ccc;
+          background-color: #f9f9f9;
+          overflow: auto;
+          display: none;
+          flex-direction: column;
+          padding: 10px;
+      }
+      #chat-header {
+          background-color: #007bff;
+          color: white;
+          padding: 10px;
+          text-align: center;
+      }
+      #chat-messages {
+          padding: 10px;
+          height: calc(100% - 120px);
+          overflow-y: scroll;
+          flex-grow: 1;
+      }
+      #chat-input {
+          padding: 10px;
+      }
+      .user-message {
+          text-align: right;
+          margin-bottom: 10px;
+      }
+      .bot-message {
+          text-align: left;
+          margin-bottom: 10px;
+      }
+      .message-content {
+          display: inline-block;
+          padding: 8px 12px;
+          border-radius: 12px;
+          max-width: 100%;
+          word-wrap: break-word;
+      }
+      .user-message .message-content {
+          background-color: #dcf8c6;
+          color: #000;
+      }
+      .bot-message .message-content {
+          background-color: #ececec;
+          color: #000;
+      }
+    </style>    
+</head>
+<body>
+ <main>
+    <div class="container">
+        <div class="row">
+            <!-- Mitad izquierda -->
+            <div class="col-md-6 text-center">
+                <div class="px-4 py-3 my-2">
+                    <img class="d-block mx-auto mb-4" src="{{ url_for('static', filename='images/azure-icon.svg') }}" alt="Azure Logo" width="192" height="192"/>
+                    <h1 class="display-6 fw-bold">Hola {{name}}</h1>
+                    <p class="fs-5">
+                        ¡Es un gusto conocerte!
+                    </p>
+                    <form method="post" action="{{ url_for('hello') }}">
+                      <input type="hidden" name="name" value="{{name}}">
+                      <div class="mb-3">
+                          <label for="option" class="form-label fw-bold fs-5">Por favor, selecciona una opción:</label>
+                          <select class="form-select" id="option" name="option" style="max-width: 256px; margin: 0 auto;">
+                              {% for option in options %}
+                                  <option value="{{ option }}" {% if selected_option == option %}selected{% endif %}>{{ option }}</option>
+                              {% endfor %}
+                          </select>
+                      </div>
+                      <div class="d-grid gap-2 d-sm-flex justify-content-sm-center my-2">
+                          <button type="submit" class="btn btn-primary btn-lg px-4 gap-3">Enviar</button>
+                      </div>
+                  </form>                  
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary btn-lg px-4 gap-3">Volver al inicio</a>
+                </div>
+            </div>
+            <!-- Mitad derecha -->
+            <div class="col-md-6 text-center">
+                {% if selected_option %}
+                <div class="px-4 py-3 my-2">
+                    <!-- Mostrar el nombre de la opción elegida en la parte superior derecha -->
+                    <h1 class="display-6 fw-bold">Opción seleccionada: {{ selected_option }}</h1>
+                </div>
+                {% endif %}
+
+                {% if selected_option == "Alertas proveedores" %}
+                <!-- Mostrar el formulario de Promptflow -->
+                <div id="promptflow-form">
+                    <h2>Por favor, rellena los siguientes campos:</h2>
+                    <form id="promptflow-input-form">
+                        <div class="mb-3">
+                            <label for="periodoArchivoActual" class="form-label">Periodo Archivo Actual</label>
+                            <input type="text" class="form-control" id="periodoArchivoActual" name="periodoArchivoActual">
+                        </div>
+                        <div class="mb-3">
+                            <label for="periodoArchivoAntiguo" class="form-label">Periodo Archivo Antiguo</label>
+                            <input type="text" class="form-control" id="periodoArchivoAntiguo" name="periodoArchivoAntiguo">
+                        </div>
+                        <div class="mb-3">
+                            <label for="rutaArchivoAntiguo" class="form-label">Ruta Archivo Antiguo</label>
+                            <input type="text" class="form-control" id="rutaArchivoAntiguo" name="rutaArchivoAntiguo">
+                        </div>
+                        <div class="mb-3">
+                            <label for="rutaArchivoActual" class="form-label">Ruta Archivo Actual</label>
+                            <input type="text" class="form-control" id="rutaArchivoActual" name="rutaArchivoActual">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Enviar</button>
+                    </form>
+                    <div id="promptflow-response" class="mt-4">
+                        <!-- La respuesta se mostrará aquí -->
+                    </div>
+                </div>
+                {% elif selected_option == "Chat RIS" %}
+                <!-- Mostrar el cuadro de chat -->
+                <div id="chat-box">
+                    <div id="chat-header">
+                        Chat
+                    </div>
+                    <div id="chat-messages">
+                        <!-- Los mensajes aparecerán aquí -->
+                    </div>
+                    <div id="chat-input">
+                        <form id="chat-form">
+                            <input type="text" id="chat-message" placeholder="Escribe tu mensaje..." class="form-control">
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+ </main>
+ <script>
+    {% if selected_option == "Alertas proveedores" %}
+    // Mostrar el formulario de Promptflow
+    document.getElementById('promptflow-form').style.display = 'block';
+
+    const promptflowForm = document.getElementById('promptflow-input-form');
+    const promptflowResponseDiv = document.getElementById('promptflow-response');
+
+    promptflowForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const formData = new FormData(promptflowForm);
+        const data = Object.fromEntries(formData.entries());
+
+        // Enviar los datos al servidor
+        fetch('{{ url_for('promptflow') }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Mostrar la respuesta
+            promptflowResponseDiv.textContent = data.response;
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
+    });
+
+    {% elif selected_option == "Chat RIS" %}
+    // Mostrar el cuadro de chat
+    document.getElementById('chat-box').style.display = 'block';
+
+    const chatForm = document.getElementById('chat-form');
+    const chatMessages = document.getElementById('chat-messages');
+
+    chatForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const message = document.getElementById('chat-message').value;
+        if (message.trim() !== '') {
+            // Mostrar el mensaje del usuario
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.classList.add('user-message');
+            const userMessageContent = document.createElement('div');
+            userMessageContent.classList.add('message-content');
+            userMessageContent.textContent = message;
+            userMessageDiv.appendChild(userMessageContent);
+            chatMessages.appendChild(userMessageDiv);
+
+            // Desplazar hacia abajo
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Enviar el mensaje al servidor
+            fetch('{{ url_for('chat') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({message: message}),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Mostrar la respuesta del bot
+                const botMessageDiv = document.createElement('div');
+                botMessageDiv.classList.add('bot-message');
+                const botMessageContent = document.createElement('div');
+                botMessageContent.classList.add('message-content');
+                botMessageContent.textContent = data.response;
+                botMessageDiv.appendChild(botMessageContent);
+                chatMessages.appendChild(botMessageDiv);
+
+                // Desplazar hacia abajo
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+
+            // Limpiar el input
+            document.getElementById('chat-message').value = '';
+        }
+    });
+    {% endif %}
+  </script>
+</body>
+</html>
