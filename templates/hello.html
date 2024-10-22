@@ -6,10 +6,9 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <style>
       /* Estilos para el chat y el formulario */
-      #chat-box, #promptflow-form {
+      #chat-box, #promptflow-form, #seguimiento-chat-box, #seguimiento-promptflow-form {
           position: fixed;
           bottom: 0;
-          right: 0;
           width: 50%;
           top: calc(100px + 2em);
           border: 1px solid #ccc;
@@ -19,19 +18,25 @@
           flex-direction: column;
           padding: 10px;
       }
-      #chat-header {
+      #chat-box, #seguimiento-chat-box {
+          right: 0;
+      }
+      #promptflow-form, #seguimiento-promptflow-form {
+          left: 0;
+      }
+      #chat-header, #seguimiento-chat-header {
           background-color: #007bff;
           color: white;
           padding: 10px;
           text-align: center;
       }
-      #chat-messages {
+      #chat-messages, #seguimiento-chat-messages {
           padding: 10px;
-          height: calc(100% - 120px);
+          height: calc(100% - 160px);
           overflow-y: scroll;
           flex-grow: 1;
       }
-      #chat-input {
+      #chat-input, #seguimiento-chat-input {
           padding: 10px;
       }
       .user-message {
@@ -139,6 +144,35 @@
                         </form>
                     </div>
                 </div>
+                {% elif selected_option == "indemnizables: seguimiento" %}
+                <!-- Mostrar el formulario de Promptflow y el chat -->
+                <div id="seguimiento-promptflow-form">
+                    <h2>Por favor, ingresa el número de expediente:</h2>
+                    <form id="seguimiento-promptflow-input-form">
+                        <div class="mb-3">
+                            <label for="numeroExpediente" class="form-label">Número de Expediente</label>
+                            <input type="text" class="form-control" id="numeroExpediente" name="numeroExpediente">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Establecer</button>
+                    </form>
+                    <div id="seguimiento-promptflow-response" class="mt-4">
+                        <!-- La respuesta se mostrará aquí -->
+                    </div>
+                </div>
+
+                <div id="seguimiento-chat-box">
+                    <div id="seguimiento-chat-header">
+                        Chat Seguimiento
+                    </div>
+                    <div id="seguimiento-chat-messages">
+                        <!-- Los mensajes aparecerán aquí -->
+                    </div>
+                    <div id="seguimiento-chat-input">
+                        <form id="seguimiento-chat-form">
+                            <input type="text" id="seguimiento-chat-message" placeholder="Escribe tu mensaje..." class="form-control">
+                        </form>
+                    </div>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -227,6 +261,81 @@
 
             // Limpiar el input
             document.getElementById('chat-message').value = '';
+        }
+    });
+
+    {% elif selected_option == "indemnizables: seguimiento" %}
+    // Mostrar el formulario y el chat
+    document.getElementById('seguimiento-promptflow-form').style.display = 'block';
+    document.getElementById('seguimiento-chat-box').style.display = 'block';
+
+    let numeroExpediente = '';
+
+    const seguimientoPromptflowForm = document.getElementById('seguimiento-promptflow-input-form');
+    const seguimientoPromptflowResponseDiv = document.getElementById('seguimiento-promptflow-response');
+
+    seguimientoPromptflowForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        numeroExpediente = document.getElementById('numeroExpediente').value;
+        if (numeroExpediente.trim() !== '') {
+            seguimientoPromptflowResponseDiv.textContent = 'Número de expediente establecido: ' + numeroExpediente;
+        } else {
+            seguimientoPromptflowResponseDiv.textContent = 'Por favor, ingresa un número de expediente válido.';
+        }
+    });
+
+    const seguimientoChatForm = document.getElementById('seguimiento-chat-form');
+    const seguimientoChatMessages = document.getElementById('seguimiento-chat-messages');
+
+    seguimientoChatForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const message = document.getElementById('seguimiento-chat-message').value;
+        if (message.trim() !== '') {
+            if (numeroExpediente.trim() === '') {
+                alert('Por favor, ingresa un número de expediente antes de enviar mensajes.');
+                return;
+            }
+            // Mostrar el mensaje del usuario
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.classList.add('user-message');
+            const userMessageContent = document.createElement('div');
+            userMessageContent.classList.add('message-content');
+            userMessageContent.textContent = message;
+            userMessageDiv.appendChild(userMessageContent);
+            seguimientoChatMessages.appendChild(userMessageDiv);
+
+            // Desplazar hacia abajo
+            seguimientoChatMessages.scrollTop = seguimientoChatMessages.scrollHeight;
+
+            // Enviar el mensaje al servidor
+            fetch('{{ url_for('seguimiento_chat') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({message: message, numeroExpediente: numeroExpediente}),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Mostrar la respuesta del bot
+                const botMessageDiv = document.createElement('div');
+                botMessageDiv.classList.add('bot-message');
+                const botMessageContent = document.createElement('div');
+                botMessageContent.classList.add('message-content');
+                botMessageContent.textContent = data.response;
+                botMessageDiv.appendChild(botMessageContent);
+                seguimientoChatMessages.appendChild(botMessageDiv);
+
+                // Desplazar hacia abajo
+                seguimientoChatMessages.scrollTop = seguimientoChatMessages.scrollHeight;
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+
+            // Limpiar el input
+            document.getElementById('seguimiento-chat-message').value = '';
         }
     });
     {% endif %}
