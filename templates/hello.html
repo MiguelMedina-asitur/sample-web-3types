@@ -6,7 +6,7 @@
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <style>
       /* Estilos para el chat y el formulario */
-      #chat-box, #promptflow-form, #seguimiento-chat-box, #seguimiento-promptflow-form {
+      #chat-box, #seguimiento-chat-box {
           position: fixed;
           bottom: 0;
           width: 50%;
@@ -18,11 +18,31 @@
           flex-direction: column;
           padding: 10px;
       }
-      #chat-box, #seguimiento-chat-box {
+      #promptflow-form {
+          position: fixed;
+          bottom: 0;
           right: 0;
+          width: 50%;
+          top: calc(100px + 2em);
+          border: 1px solid #ccc;
+          background-color: #f9f9f9;
+          overflow: auto;
+          display: none;
+          flex-direction: column;
+          padding: 10px;
       }
-      #promptflow-form, #seguimiento-promptflow-form {
-          left: 0;
+      #seguimiento-promptflow-form {
+          position: fixed;
+          bottom: 10px;
+          left: 10px;
+          width: auto;
+          height: auto;
+          max-width: 300px;
+          border: 1px solid #ccc;
+          background-color: #f9f9f9;
+          overflow: hidden;
+          padding: 10px;
+          display: none;
       }
       #chat-header, #seguimiento-chat-header {
           background-color: #007bff;
