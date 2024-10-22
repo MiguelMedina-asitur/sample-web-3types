@@ -76,8 +76,8 @@ def promptflow():
 
     body = str.encode(json.dumps(payload))
 
-    url = os.getenv('ENDPOINT_ALERTAS')
-    api_key = os.getenv('KEY_ALERTAS')
+    url = os.getenv('ENDPOINT_1')
+    api_key = os.getenv('KEY_1')
 
     if not api_key:
         return jsonify({'response': 'API key is missing'}), 500
@@ -125,8 +125,8 @@ def chat():
 
         body = str.encode(json.dumps(payload))
 
-        url = os.getenv('ENDPOINT_RIS')
-        api_key = os.getenv('KEY_RIS')
+        url = os.getenv('ENDPOINT_2')
+        api_key = os.getenv('KEY_2')
 
         if not api_key:
             return jsonify({'response': 'API key is missing'}), 500
@@ -182,8 +182,8 @@ def seguimiento_chat():
 
         body = str.encode(json.dumps(payload))
 
-        url = os.getenv('ENDPOINT_SEGUIMIENTO')
-        api_key = os.getenv('KEY_SEGUIMIENTO')
+        url = os.getenv('ENDPOINT_3')
+        api_key = os.getenv('KEY_3')
 
         if not api_key:
             return jsonify({'response': 'API key is missing'}), 500
