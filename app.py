@@ -164,10 +164,15 @@ def seguimiento_chat():
     data = request.get_json()
     message = data.get('message', '')
     numero_expediente = data.get('numeroExpediente', '')
+    reset = data.get('reset', False)
 
     if message and numero_expediente:
         # Obtener historial de chat de la sesión
         chat_history = session.get('seguimiento_chat_history', {})
+        
+        if reset:
+            # Reiniciar el historial para este número de expediente
+            chat_history[numero_expediente] = []
         expediente_history = chat_history.get(numero_expediente, [])
 
         # Añadir el nuevo mensaje al historial
@@ -197,7 +202,7 @@ def seguimiento_chat():
 
             result = response.read()
             # Convertir el resultado a un diccionario de Python
-            result_json = json.loads(result.decode('utf-8'))
+            result_json = json.loads(result)   # (result.decode('utf-8'))
             # Obtener la respuesta
             respuesta = result_json.get('answer', 'No hay respuesta del API')
 
@@ -217,6 +222,7 @@ def seguimiento_chat():
             return jsonify({'response': 'Ocurrió un error: ' + error_message}), error.code
     else:
         return jsonify({'response': 'No se recibió ningún mensaje o número de expediente'}), 400
+
 
 if __name__ == '__main__':
     app.run()

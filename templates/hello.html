@@ -300,10 +300,47 @@
         numeroExpediente = document.getElementById('numeroExpediente').value;
         if (numeroExpediente.trim() !== '') {
             seguimientoPromptflowResponseDiv.textContent = 'Número de expediente establecido: ' + numeroExpediente;
+
+            // Borrar mensajes del chat
+            seguimientoChatMessages.innerHTML = '';
+
+            // Preparar el mensaje inicial con las tres preguntas
+            const initialMessage = 'Haz un resumen de máximo 5 lineas del seguimiento\n¿Qué se ha reparado en el seguimiento?\n¿Qué se ha indemnizado en el seguimiento?';
+
+            // Enviar el mensaje inicial al servidor con el flag reset
+            fetch('{{ url_for('seguimiento_chat') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: initialMessage,
+                    numeroExpediente: numeroExpediente,
+                    reset: true  // Indicamos al servidor que debe resetear el historial
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Mostrar la respuesta del bot en el chat
+                const botMessageDiv = document.createElement('div');
+                botMessageDiv.classList.add('bot-message');
+                const botMessageContent = document.createElement('div');
+                botMessageContent.classList.add('message-content');
+                botMessageContent.textContent = data.response;
+                botMessageDiv.appendChild(botMessageContent);
+                seguimientoChatMessages.appendChild(botMessageDiv);
+
+                // Desplazar hacia abajo
+                seguimientoChatMessages.scrollTop = seguimientoChatMessages.scrollHeight;
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
         } else {
             seguimientoPromptflowResponseDiv.textContent = 'Por favor, ingresa un número de expediente válido.';
         }
     });
+
 
     const seguimientoChatForm = document.getElementById('seguimiento-chat-form');
     const seguimientoChatMessages = document.getElementById('seguimiento-chat-messages');
