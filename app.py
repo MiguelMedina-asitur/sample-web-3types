@@ -1,228 +1,228 @@
 import os
 import ssl
-import urllib.request
 import json
+import urllib.request
 
-from flask import (Flask, redirect, render_template, request,
-                   send_from_directory, url_for, jsonify, session)
-from flask_session import Session
-
-app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Cambia esto por una clave secreta segura
-app.config['SESSION_TYPE'] = 'filesystem'
-Session(app)
-
+import streamlit as st
 from dotenv import load_dotenv
 
-# Cargar las variables desde el archivo .env
-load_dotenv()
-
 def allowSelfSignedHttps(allowed):
-    # Omite la verificación del certificado del servidor en el cliente
+    # Ignore certificate verification on client side
     if allowed and not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None):
         ssl._create_default_https_context = ssl._create_unverified_context
 
-allowSelfSignedHttps(True)  # Necesario si usas un certificado autofirmado en tu servicio
+allowSelfSignedHttps(True)  # Allow self-signed certificates
 
-@app.route('/')
-def index():
-    print('Request for index page received')
-    return render_template('index.html')
+load_dotenv()  # Load environment variables from .env file
 
-@app.route('/favicon.ico')
-def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static'),
-                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+def main():
+    st.title("Bienvenido")
 
-@app.route('/hello', methods=['GET', 'POST'])
-def hello():
-    options = ["Alertas proveedores", "Chat RIS", "indemnizables: seguimiento"]
-    if request.method == 'POST':
-        if 'name' in request.form and 'option' not in request.form:
-            name = request.form.get('name')
-            if name:
-                print('Request for hello page received with name=%s' % name)
-                return render_template('hello.html', name=name, options=options)
+    # Check if name is in session state
+    if 'name' not in st.session_state:
+        name = st.text_input("Por favor, ingresa tu nombre:")
+        if name:
+            st.session_state['name'] = name
+            st.experimental_rerun()
+        else:
+            st.stop()
+    else:
+        st.write(f"Hola, {st.session_state['name']}!")
+
+        # Display options
+        options = ["Alertas proveedores", "Chat RIS", "indemnizables: seguimiento"]
+        selected_option = st.selectbox("Por favor, selecciona una opción:", options)
+
+        # Now, depending on the selected option, display different UIs
+        if selected_option == "Alertas proveedores":
+            # Implement the promptflow functionality
+            promptflow_app()
+        elif selected_option == "Chat RIS":
+            # Implement the chat functionality
+            chat_app()
+        elif selected_option == "indemnizables: seguimiento":
+            # Implement the seguimiento_chat functionality
+            seguimiento_chat_app()
+
+def promptflow_app():
+    st.subheader("Alertas proveedores")
+
+    # Create a form to collect inputs
+    with st.form(key='promptflow_form'):
+        periodo_actual = st.text_input("Periodo Archivo Actual", '')
+        periodo_antiguo = st.text_input("Periodo Archivo Antiguo", '')
+        ruta_antiguo = st.text_input("Ruta Archivo Antiguo", '')
+        ruta_actual = st.text_input("Ruta Archivo Actual", '')
+
+        submit_button = st.form_submit_button(label='Enviar')
+
+    if submit_button:
+        # Prepare the payload
+        payload = {
+            "periodoArchivoActual": periodo_actual,
+            "periodoArchivoAntiguo": periodo_antiguo,
+            "rutaArchivoAntiguo": ruta_antiguo,
+            "rutaArchivoActual": ruta_actual
+        }
+
+        body = str.encode(json.dumps(payload))
+
+        # Get the URL and API key from environment variables
+        url = os.getenv('ENDPOINT_1')
+        api_key = os.getenv('KEY_1')
+
+        if not api_key:
+            st.error('Falta la clave API')
+            st.stop()
+
+        headers = {'Content-Type': 'application/json', 'Authorization': ('Bearer ' + api_key)}
+
+        req = urllib.request.Request(url, body, headers)
+
+        try:
+            response = urllib.request.urlopen(req)
+            result = response.read()
+            # Convert bytes to string
+            result_str = result.decode('utf-8')
+            # Load JSON
+            result_json = json.loads(result_str)
+            # Get the content of 'campo_output'
+            campo_output = 'desarrollo'
+            response_message = result_json.get(campo_output, 'No hay respuesta del API')
+            st.success(response_message)
+        except urllib.error.HTTPError as error:
+            st.error(f"La solicitud falló con el código de estado: {error.code}")
+            error_message = error.read().decode("utf8", 'ignore')
+            st.error(f"Ocurrió un error: {error_message}")
+
+def chat_app():
+    st.subheader("Chat RIS")
+
+    if 'chat_history' not in st.session_state:
+        st.session_state['chat_history'] = []
+
+    # Display chat history
+    for chat in st.session_state['chat_history']:
+        st.write(f"**Usuario**: {chat['inputs']['question']}")
+        if 'outputs' in chat:
+            st.write(f"**Bot**: {chat['outputs']['answer']}")
+
+    # Input for new message
+    message = st.text_input("Tu mensaje:", key='chat_input')
+
+    if st.button("Enviar", key='chat_send'):
+        if message:
+            # Add the message to chat history
+            st.session_state['chat_history'].append({'inputs': {'question': message}})
+
+            # Prepare the payload
+            payload = {
+                'question': message,
+                'chat_history': [h for h in st.session_state['chat_history'][:-1] if 'outputs' in h]
+            }
+
+            body = str.encode(json.dumps(payload))
+
+            # Get the URL and API key from environment variables
+            url = os.getenv('ENDPOINT_2')
+            api_key = os.getenv('KEY_2')
+
+            if not api_key:
+                st.error('Falta la clave API')
+                st.stop()
+
+            headers = {'Content-Type': 'application/json', 'Authorization': ('Bearer ' + api_key)}
+
+            req = urllib.request.Request(url, body, headers)
+
+            try:
+                response = urllib.request.urlopen(req)
+                result = response.read()
+                result_json = json.loads(result.decode('utf-8'))
+                respuesta = result_json.get('answer', 'No hay respuesta del API')
+
+                # Add the response to chat history
+                st.session_state['chat_history'][-1]['outputs'] = {'answer': respuesta}
+                st.experimental_rerun()
+            except urllib.error.HTTPError as error:
+                st.error(f"La solicitud falló con el código de estado: {error.code}")
+                error_message = error.read().decode("utf8", 'ignore')
+                st.error(f"Ocurrió un error: {error_message}")
+        else:
+            st.error("No se recibió ningún mensaje")
+
+def seguimiento_chat_app():
+    st.subheader("Indemnizables: seguimiento")
+
+    # Input for numero_expediente
+    numero_expediente = st.text_input("Número de Expediente:", key='numero_expediente')
+
+    if numero_expediente:
+        # Check if 'seguimiento_chat_history' exists in session_state
+        if 'seguimiento_chat_history' not in st.session_state:
+            st.session_state['seguimiento_chat_history'] = {}
+
+        # Option to reset chat history
+        if st.button("Reiniciar Historial de Chat"):
+            st.session_state['seguimiento_chat_history'][numero_expediente] = []
+
+        expediente_history = st.session_state['seguimiento_chat_history'].get(numero_expediente, [])
+
+        # Display chat history for this expediente
+        for chat in expediente_history:
+            st.write(f"**Usuario**: {chat['inputs']['question']}")
+            if 'outputs' in chat:
+                st.write(f"**Bot**: {chat['outputs']['answer']}")
+
+        # Input for new message
+        message = st.text_input("Tu mensaje:", key='seguimiento_chat_input')
+
+        if st.button("Enviar", key='seguimiento_chat_send'):
+            if message:
+                # Add the message to expediente_history
+                expediente_history.append({'inputs': {'question': message}})
+
+                # Prepare the payload
+                payload = {
+                    'question': message,
+                    'chat_history': [h for h in expediente_history[:-1] if 'outputs' in h],
+                    'numero expediente': numero_expediente
+                }
+
+                body = str.encode(json.dumps(payload))
+
+                # Get the URL and API key from environment variables
+                url = os.getenv('ENDPOINT_3')
+                api_key = os.getenv('KEY_3')
+
+                if not api_key:
+                    st.error('Falta la clave API')
+                    st.stop()
+
+                headers = {'Content-Type': 'application/json', 'Authorization': ('Bearer ' + api_key)}
+
+                req = urllib.request.Request(url, body, headers)
+
+                try:
+                    response = urllib.request.urlopen(req)
+                    result = response.read()
+                    result_json = json.loads(result.decode('utf-8'))
+                    respuesta = result_json.get('answer', 'No hay respuesta del API')
+
+                    # Add the response to expediente_history
+                    expediente_history[-1]['outputs'] = {'answer': respuesta}
+
+                    # Update the history in session_state
+                    st.session_state['seguimiento_chat_history'][numero_expediente] = expediente_history
+                    st.experimental_rerun()
+                except urllib.error.HTTPError as error:
+                    st.error(f"La solicitud falló con el código de estado: {error.code}")
+                    error_message = error.read().decode("utf8", 'ignore')
+                    st.error(f"Ocurrió un error: {error_message}")
             else:
-                print('Request for hello page received with no name or blank name -- redirecting')
-                return redirect(url_for('index'))
-        elif 'option' in request.form:
-            name = request.form.get('name')
-            selected_option = request.form.get('option')
-            print('Option selected: %s' % selected_option)
-            # Reiniciar historial de chat si se selecciona una nueva opción
-            session.pop('chat_history', None)
-            session.pop('seguimiento_chat_history', None)
-            return render_template('hello.html', name=name, options=options, selected_option=selected_option)
+                st.error("No se recibió ningún mensaje")
     else:
-        return redirect(url_for('index'))
-
-@app.route('/promptflow', methods=['POST'])
-def promptflow():
-    data = request.get_json()
-    # Obtener los campos del formulario
-    periodo_actual = data.get('periodoArchivoActual', '')
-    periodo_antiguo = data.get('periodoArchivoAntiguo', '')
-    ruta_antiguo = data.get('rutaArchivoAntiguo', '')
-    ruta_actual = data.get('rutaArchivoActual', '')
-
-    # Preparar los datos para la solicitud
-    payload = {
-        "periodoArchivoActual": periodo_actual,
-        "periodoArchivoAntiguo": periodo_antiguo,
-        "rutaArchivoAntiguo": ruta_antiguo,
-        "rutaArchivoActual": ruta_actual
-    }
-
-    body = str.encode(json.dumps(payload))
-
-    url = os.getenv('ENDPOINT_1')
-    api_key = os.getenv('KEY_1')
-
-    if not api_key:
-        return jsonify({'response': 'API key is missing'}), 500
-
-    headers = {'Content-Type': 'application/json', 'Authorization': ('Bearer ' + api_key)}
-
-    req = urllib.request.Request(url, body, headers)
-
-    try:
-        response = urllib.request.urlopen(req)
-
-        result = response.read()
-        # Convertir bytes a string
-        result_str = result.decode('utf-8')
-        # Cargar el JSON
-        result_json = json.loads(result_str)
-        # Obtener el contenido de 'campo_output'
-        campo_output = 'desarrollo'
-        response_message = result_json.get(campo_output, 'No hay respuesta del API')
-
-        return jsonify({'response': response_message})
-    except urllib.error.HTTPError as error:
-        print("La solicitud falló con el código de estado: " + str(error.code))
-        print(error.info())
-        error_message = error.read().decode("utf8", 'ignore')
-        print(error_message)
-        return jsonify({'response': 'Ocurrió un error: ' + error_message}), error.code
-
-@app.route('/chat', methods=['POST'])
-def chat():
-    data = request.get_json()
-    message = data.get('message', '')
-
-    if message:
-        # Obtener historial de chat de la sesión
-        chat_history = session.get('chat_history', [])
-        # Añadir el nuevo mensaje al historial
-        chat_history.append({'inputs': {'question': message}})
-
-        # Preparar los datos para la solicitud
-        payload = {
-            'question': message,
-            'chat_history': chat_history[:-1]  # Enviar el historial sin el último mensaje
-        }
-
-        body = str.encode(json.dumps(payload))
-
-        url = os.getenv('ENDPOINT_2')
-        api_key = os.getenv('KEY_2')
-
-        if not api_key:
-            return jsonify({'response': 'API key is missing'}), 500
-
-        headers = {'Content-Type': 'application/json', 'Authorization': ('Bearer ' + api_key)}
-
-        req = urllib.request.Request(url, body, headers)
-
-        try:
-            response = urllib.request.urlopen(req)
-
-            result = response.read()
-            # Convertir el resultado a un diccionario de Python
-            result_json = json.loads(result.decode('utf-8'))
-            # Obtener la respuesta
-            respuesta = result_json.get('answer', 'No hay respuesta del API')
-
-            # Añadir la respuesta al historial
-            chat_history[-1]['outputs'] = {'answer': respuesta}
-            # Actualizar el historial en la sesión
-            session['chat_history'] = chat_history
-
-            return jsonify({'response': respuesta})
-        except urllib.error.HTTPError as error:
-            print("La solicitud falló con el código de estado: " + str(error.code))
-            print(error.info())
-            error_message = error.read().decode("utf8", 'ignore')
-            print(error_message)
-            return jsonify({'response': 'Ocurrió un error: ' + error_message}), error.code
-    else:
-        return jsonify({'response': 'No se recibió ningún mensaje'}), 400
-
-@app.route('/seguimiento_chat', methods=['POST'])
-def seguimiento_chat():
-    data = request.get_json()
-    message = data.get('message', '')
-    numero_expediente = data.get('numeroExpediente', '')
-    reset = data.get('reset', False)
-
-    if message and numero_expediente:
-        # Obtener historial de chat de la sesión
-        chat_history = session.get('seguimiento_chat_history', {})
-        
-        if reset:
-            # Reiniciar el historial para este número de expediente
-            chat_history[numero_expediente] = []
-        expediente_history = chat_history.get(numero_expediente, [])
-
-        # Añadir el nuevo mensaje al historial
-        expediente_history.append({'inputs': {'question': message}})
-
-        # Preparar los datos para la solicitud
-        payload = {
-            'question': message,
-            'chat_history': expediente_history[:-1],  # Enviar el historial sin el último mensaje
-            'numero expediente': numero_expediente
-        }
-
-        body = str.encode(json.dumps(payload))
-
-        url = os.getenv('ENDPOINT_3')
-        api_key = os.getenv('KEY_3')
-
-        if not api_key:
-            return jsonify({'response': 'API key is missing'}), 500
-
-        headers = {'Content-Type': 'application/json', 'Authorization': ('Bearer ' + api_key)}
-
-        req = urllib.request.Request(url, body, headers)
-
-        try:
-            response = urllib.request.urlopen(req)
-
-            result = response.read()
-            # Convertir el resultado a un diccionario de Python
-            result_json = json.loads(result)   # (result.decode('utf-8'))
-            # Obtener la respuesta
-            respuesta = result_json.get('answer', 'No hay respuesta del API')
-
-            # Añadir la respuesta al historial
-            expediente_history[-1]['outputs'] = {'answer': respuesta}
-
-            # Actualizar el historial en la sesión
-            chat_history[numero_expediente] = expediente_history
-            session['seguimiento_chat_history'] = chat_history
-
-            return jsonify({'response': respuesta})
-        except urllib.error.HTTPError as error:
-            print("La solicitud falló con el código de estado: " + str(error.code))
-            print(error.info())
-            error_message = error.read().decode("utf8", 'ignore')
-            print(error_message)
-            return jsonify({'response': 'Ocurrió un error: ' + error_message}), error.code
-    else:
-        return jsonify({'response': 'No se recibió ningún mensaje o número de expediente'}), 400
-
+        st.info("Por favor, ingresa el número de expediente")
 
 if __name__ == '__main__':
-    app.run()
+    main()
